@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Schema Constructor: Reconstruction Era Unit</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: rgba(17, 25, 40, 0.75);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --teal: #5eead4;
+      --gold: #f59e0b;
+      --red: #ef4444;
+      --font-ui: "Segoe UI", -apple-system, sans-serif;
+      --font-serif: Georgia, serif;
+      --font-mono: Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(ellipse at 50% 120%, #111827 0%, #030712 100%);
+      color: var(--text);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(3, 7, 18, 0.6);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-logo {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-logo h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--text);
+      text-shadow: 0 0 10px rgba(94, 234, 212, 0.15);
+    }
+
+    .header-logo span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .hud-metrics {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .metric-pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      min-width: 90px;
+    }
+
+    .metric-pill label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .metric-pill span {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: var(--text);
+      font-family: var(--font-mono);
+    }
+
+    .metric-pill.highlight span {
+      color: var(--teal);
+    }
+
+    .metric-pill.warning span {
+      color: var(--gold);
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 15px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* LEFT PANEL: SCHEMA CONSTRUCTOR */
+    .schema-container {
+      position: relative;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+      overflow: hidden;
+      flex: 1;
+      min-height: 380px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .schema-svg {
+      width: 100%;
+      height: 100%;
+      max-height: 420px;
+    }
+
+    .schema-node {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .schema-node circle {
+      fill: #1e293b;
+      stroke: #475569;
+      stroke-width: 2;
+      transition: fill 0.6s ease, stroke 0.6s ease, stroke-width 0.3s;
+    }
+
+    .schema-node text {
+      fill: var(--text-muted);
+      font-size: 11px;
+      font-family: var(--font-ui);
+      font-weight: 500;
+      text-anchor: middle;
+      pointer-events: none;
+      transition: fill 0.6s ease, font-weight 0.6s ease;
+    }
+
+    .schema-node:focus-visible circle {
+      stroke: var(--teal);
+      stroke-width: 4;
+    }
+
+    .schema-node.active circle {
+      fill: rgba(94, 234, 212, 0.15);
+      stroke: var(--teal);
+      stroke-width: 3;
+      filter: drop-shadow(0 0 8px rgba(94, 234, 212, 0.4));
+    }
+
+    .schema-node.active text {
+      fill: var(--text);
+      font-weight: 600;
+    }
+
+    .schema-path {
+      stroke: #334155;
+      stroke-width: 2.5;
+      stroke-dasharray: none;
+      transition: stroke 0.8s ease, stroke-width 0.8s ease;
+    }
+
+    .schema-path.active {
+      stroke: var(--gold);
+      stroke-width: 3.5;
+      stroke-dasharray: 6 34;
+      animation: goldPathPulse 2s linear infinite;
+      filter: drop-shadow(0 0 4px var(--gold));
+    }
+
+    @keyframes goldPathPulse {
+      to {
+        stroke-dashoffset: -40;
+      }
+    }
+
+    /* RIGHT PANEL: STUDENT ESSAY CLIPBOARD */
+    .clipboard-wrapper {
+      perspective: 1000px;
+      flex: 1;
+      display: flex;
+    }
+
+    .clipboard {
+      background: #faf6eb;
+      border-radius: 14px;
+      border: 6px solid #4a3e35;
+      width: 100%;
+      min-height: 480px;
+      padding: 30px 24px;
+      color: #1f2937;
+      font-family: var(--font-serif);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+      position: relative;
+      transition: border 0.6s ease, box-shadow 0.6s ease, transform 0.6s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .clipboard-clip {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 110px;
+      height: 24px;
+      background: #78716c;
+      border-radius: 4px;
+      border: 2px solid #444;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+      z-index: 10;
+    }
+
+    .clipboard.ai-boosted {
+      border-color: var(--gold);
+      box-shadow: 0 0 35px rgba(245, 158, 11, 0.35), 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    .clipboard.sheared {
+      animation: shearCollapse 1.2s forwards cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    @keyframes shearCollapse {
+      0% { transform: rotate(0) translateY(0); opacity: 1; }
+      25% { transform: rotate(-3deg) translateY(10px) skewX(-2deg); }
+      100% { transform: rotate(-8deg) translateY(120px) skewX(-6deg); opacity: 0.15; filter: blur(2px); }
+    }
+
+    .essay-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      border-bottom: 2px solid #e5e5e5;
+      padding-bottom: 8px;
+      margin-bottom: 18px;
+      text-align: center;
+      color: #111827;
+      font-family: var(--font-serif);
+    }
+
+    .essay-body {
+      font-size: 0.94rem;
+      line-height: 1.55;
+      flex: 1;
+      overflow-y: auto;
+      max-height: 380px;
+      padding-right: 6px;
+    }
+
+    .essay-body::-webkit-scrollbar {
+      width: 6px;
+    }
+    .essay-body::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+
+    .essay-p {
+      margin-bottom: 14px;
+      animation: fadeParagraph 0.8s ease both;
+      position: relative;
+    }
+
+    @keyframes fadeParagraph {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .essay-p.struggle {
+      color: #374151;
+      border-left: 3px solid var(--teal);
+      padding-left: 8px;
+    }
+
+    .essay-p.ai-polish {
+      color: #0f172a;
+      background: rgba(245, 158, 11, 0.05);
+      border-left: 3px solid var(--gold);
+      padding: 6px 8px;
+      border-radius: 4px;
+    }
+
+    .essay-p .strike {
+      text-decoration: line-through;
+      color: #9ca3af;
+      font-style: italic;
+    }
+
+    .essay-p .insert {
+      border-bottom: 1.5px dashed var(--teal);
+      color: #0d9488;
+      font-weight: 500;
+    }
+
+    .essay-p .badge {
+      font-family: var(--font-mono);
+      font-size: 8px;
+      background: #f59e0b;
+      color: #fff;
+      padding: 2px 4px;
+      border-radius: 3px;
+      position: absolute;
+      top: -8px;
+      right: 0;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+
+    /* CONTROL CARDS PANEL */
+    .controls-panel {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .control-btn:focus-visible {
+      outline: 2px solid var(--teal);
+      outline-offset: 2px;
+    }
+
+    .control-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .control-btn.manual-option:hover:not(:disabled) {
+      border-color: var(--teal);
+      box-shadow: 0 0 15px rgba(94, 234, 212, 0.1);
+    }
+
+    .control-btn.ai-option:hover:not(:disabled) {
+      border-color: var(--gold);
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.1);
+    }
+
+    .control-btn strong {
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .control-btn span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .control-btn .cost-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .control-btn.manual-option .cost-badge {
+      background: rgba(94, 234, 212, 0.15);
+      color: var(--teal);
+    }
+
+    .control-btn.ai-option .cost-badge {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--gold);
+    }
+
+    /* DIALOGS / ADMIN WALKTHROUGH */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .dialog-card {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      max-width: 520px;
+      width: 90%;
+      padding: 28px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      transform: translateY(20px);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .overlay.active .dialog-card {
+      transform: none;
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .dialog-header h3 {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    .dialog-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #374151;
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .dialog-body {
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+    }
+
+    .dialog-body p {
+      margin-bottom: 12px;
+    }
+
+    .dialog-body p.quote {
+      font-family: var(--font-serif);
+      font-style: italic;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px;
+      border-left: 4px solid var(--gold);
+      color: var(--text);
+      border-radius: 4px;
+    }
+
+    .dialog-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn {
+      background: var(--teal);
+      color: #030712;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: transform 0.15s, filter 0.15s;
+    }
+
+    .btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn.ghost:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    /* FOOTER */
+    footer {
+      padding: 20px;
+      text-align: center;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      background: rgba(3, 7, 18, 0.4);
+      margin-top: auto;
+    }
+
+    /* TRANSFER TEST SHEAR DETAILS */
+    .shear-effect {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239, 68, 110, 0.08) 10px, rgba(239, 68, 110, 0.08) 20px);
+      opacity: 0;
+      transition: opacity 0.5s;
+      pointer-events: none;
+      border-radius: 8px;
+    }
+
+    .clipboard.sheared .shear-effect {
+      opacity: 1;
+    }
+
+    .shear-line {
+      position: absolute;
+      top: 30%;
+      left: -10%;
+      width: 120%;
+      height: 3px;
+      background: var(--red);
+      transform: rotate(-10deg);
+      box-shadow: 0 0 12px var(--red);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .clipboard.sheared .shear-line {
+      animation: flashLine 1.5s forwards;
+    }
+
+    @keyframes flashLine {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* DEBRIEF SCREEN */
+    .debrief-container {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+      animation: fadeParagraph 0.8s ease both;
+    }
+
+    .debrief-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 800px) {
+      .debrief-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .debrief-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .debrief-card h4 {
+      font-size: 1rem;
+      color: var(--teal);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .debrief-card p {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ACCESSIBILITY CHECKS PREFERENCE */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-logo">
+      <h1>The Schema Constructor</h1>
+      <span>Unit Scaffolder &middot; Reconstruction Era</span>
+    </div>
+    <div class="hud-metrics">
+      <div class="metric-pill" id="timePill">
+        <label>Time Left</label>
+        <span id="timeVal">8 TU</span>
+      </div>
+      <div class="metric-pill highlight" id="schemaPill">
+        <label>Schema Density</label>
+        <span id="schemaVal">0%</span>
+      </div>
+      <div class="metric-pill warning" id="challengePill">
+        <label>Friction (Challenge)</label>
+        <span id="challengeVal">30%</span>
+      </div>
+      <div class="metric-pill" id="polishPill">
+        <label>Hollow Polish</label>
+        <span id="polishVal">0%</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="gameMain">
+    <!-- LEFT PANEL: COGNITIVE SCHEMA NET -->
+    <section class="card" aria-label="Cognitive Schema Network">
+      <div class="card-title">
+        <span>Alex's Cognitive Schema Net</span>
+        <span id="lessonNumber" style="font-family: var(--font-mono); font-size: 0.8rem;">Lesson 1 of 5</span>
+      </div>
+      <div class="schema-container">
+        <svg class="schema-svg" viewBox="0 0 500 400">
+          <!-- Connector paths -->
+          <path id="path-sourcing-corrob" class="schema-path" d="M120 120 L230 190" />
+          <path id="path-context-corrob" class="schema-path" d="M380 120 L270 190" />
+          <path id="path-corrob-arg" class="schema-path" d="M230 210 L120 280" />
+          <path id="path-corrob-synth" class="schema-path" d="M270 210 L380 280" />
+          <path id="path-arg-transfer" class="schema-path" d="M120 310 L230 350" />
+          <path id="path-synth-transfer" class="schema-path" d="M380 310 L270 350" />
+
+          <!-- Nodes -->
+          <g class="schema-node" id="node-sourcing" data-node="sourcing" tabindex="0" aria-label="Sourcing node">
+            <circle cx="100" cy="100" r="30" />
+            <text x="100" y="104">Sourcing</text>
+          </g>
+          <g class="schema-node" id="node-context" data-node="context" tabindex="0" aria-label="Context node">
+            <circle cx="400" cy="100" r="30" />
+            <text x="400" y="104">Context</text>
+          </g>
+          <g class="schema-node" id="node-corroboration" data-node="corroboration" tabindex="0" aria-label="Corroboration node">
+            <circle cx="250" cy="200" r="34" />
+            <text x="250" y="204">Corroborate</text>
+          </g>
+          <g class="schema-node" id="node-argumentation" data-node="argumentation" tabindex="0" aria-label="Argumentation node">
+            <circle cx="100" cy="300" r="32" />
+            <text x="100" y="304">Argument</text>
+          </g>
+          <g class="schema-node" id="node-synthesis" data-node="synthesis" tabindex="0" aria-label="Synthesis node">
+            <circle cx="400" cy="300" r="32" />
+            <text x="400" y="304">Synthesis</text>
+          </g>
+          <g class="schema-node" id="node-transfer" data-node="transfer" tabindex="0" aria-label="Transfer node">
+            <circle cx="250" cy="360" r="28" />
+            <text x="250" y="364">Transfer</text>
+          </g>
+        </svg>
+      </div>
+      
+      <!-- Choices Controls -->
+      <div class="controls-panel" id="choicesPanel">
+        <button class="control-btn manual-option" id="btnManual" aria-describedby="manualHelp">
+          <strong>
+            <span>👨‍💻 Scaffolded Thinking</span>
+            <span class="cost-badge">-2 Time Units</span>
+          </strong>
+          <span id="manualHelp">Engage students in primary source analysis. Builds active connections in the Schema Net.</span>
+        </button>
+        <button class="control-btn ai-option" id="btnAI" aria-describedby="aiHelp">
+          <strong>
+            <span>🤖 AI-Bypass Automation</span>
+            <span class="cost-badge">0 Time Units</span>
+          </strong>
+          <span id="aiHelp">Delegate the writing tasks to generative templates. Delivers immediate polished draft.</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: STUDENT ESSAY CLIPBOARD -->
+    <section class="clipboard-wrapper" aria-label="Alex's Essay Draft">
+      <div class="clipboard" id="essayClipboard">
+        <div class="clipboard-clip"></div>
+        <div class="shear-effect"></div>
+        <div class="shear-line"></div>
+        
+        <h2 class="essay-title">Alex's Essay: Reconstruction's Unfinished Business</h2>
+        
+        <div class="essay-body" id="essayBody">
+          <p style="color: #6b7280; font-style: italic; text-align: center; margin-top: 50px;">
+            The page is blank. Select unit choices on the left to begin scaffolding Alex's historical inquiry.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- DEBRIEF / RESULTS OVERLAY (replaces main content on completion) -->
+  <main id="debriefMain" style="display: none; max-width: 1000px; padding: 30px; margin: 0 auto; flex-direction: column; gap: 30px;">
+    <div class="card" style="padding: 30px;">
+      <div class="card-title">
+        <span id="debriefStatusTitle">Unit Evaluation Report</span>
+        <span style="font-family: var(--font-mono); font-size: 0.8rem;" id="debriefScore">Final Score</span>
+      </div>
+      
+      <div class="debrief-container" style="display: flex;">
+        <h2 style="font-size: 1.8rem; font-weight: bold; margin-bottom: 10px; font-family: var(--font-serif);" id="debriefTitle">Report Title</h2>
+        <p id="debriefSummary" style="font-size: 1rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 25px;">
+          Summary text goes here...
+        </p>
+        
+        <div class="debrief-grid">
+          <div class="debrief-card">
+            <h4>Pedagogical Calibration</h4>
+            <p><strong>Friction Challenge:</strong> <span id="finalChallenge"></span>% (Calibrated range: 55-80%)</p>
+            <p><strong>Hollow Polish:</strong> <span id="finalPolish"></span>% (Measures superficial product appearance)</p>
+            <p><strong>Cognitive Schema Density:</strong> <span id="finalSchema"></span>%</p>
+          </div>
+          <div class="debrief-card">
+            <h4>Transfer Evaluation Details</h4>
+            <p id="finalTransferText">Details about the transfer prompt...</p>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border); margin-top: 25px; padding-top: 20px; display: flex; gap: 15px;">
+          <button class="btn" onclick="location.reload()">Reconstruct Schema</button>
+          <button class="btn ghost" onclick="printReport()">Print Calibration Summary</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- DIALOG OVERLAYS -->
+  <div class="overlay" id="dialogOverlay" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <div class="dialog-card">
+      <div class="dialog-header">
+        <div class="dialog-avatar" id="dialogAvatar">👤</div>
+        <h3 id="dialogTitle">Administrator Walkthrough</h3>
+      </div>
+      <div class="dialog-body" id="dialogBody">
+        Content...
+      </div>
+      <div class="dialog-footer">
+        <button class="btn" id="dialogBtn">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>&copy; 2026 Micah J. Miner. Extended from the *Pedagogical Friction* Dissertation Framework.</p>
+    <p style="margin-top: 5px; opacity: 0.7;">*Note: All scores, stats, and achievements are illustrative models of the pedagogical friction framework, not validated learning assessment instruments.</p>
+  </footer>
+
+  <script>
+    // Constants
+    const PRODUCTIVE_CHALLENGE = [55, 80];
+    const BARRIER_ACCESSIBLE_MAX = 20;
+
+    // Game state
+    const state = {
+      lesson: 1,
+      timeLeft: 8,
+      schemaDensity: 0,
+      challenge: 30,
+      polish: 0,
+      activeNodes: new Set(),
+      choices: [], // Records 'manual' or 'ai' for each lesson
+      adminWalkthroughDone: false
+    };
+
+    // Lesson configurations
+    const lessonsConfig = {
+      1: {
+        title: "Lesson 1: Sourcing & Inquiry",
+        manual: {
+          title: "Scaffolded Archive Search",
+          desc: "Guide students to crosscheck Freedman's Bureau record catalogs. High cognitive struggle, slow writing progress.",
+          deltas: { time: -2, schema: 20, challenge: 15, polish: 5 },
+          node: "sourcing",
+          essay: `<p class="essay-p struggle"><span class="badge">Student Authored</span>Alex spends hours reviewing letters from Reconstruction-era teachers. <i>Draft:</i> <span class="strike">They had schools</span> <span class="insert">Newly freed men and women established schools in 1865</span>, demonstrating active communal agency in securing educational access despite violent resistance.</p>`
+        },
+        ai: {
+          title: "AI prompt template",
+          desc: "Provide students with an AI prompt to write the introduction paragraph immediately. Zero friction.",
+          deltas: { time: 0, schema: 0, challenge: -10, polish: 25 },
+          essay: `<p class="essay-p ai-polish"><span class="badge" style="background:#d97706">AI Generated</span>Reconstruction, spanning 1865 to 1877, was a pivotal era characterized by the restructuring of the Southern United States. The integration of freed individuals into the socioeconomic landscape represented a monumental administrative milestone.</p>`
+        }
+      },
+      2: {
+        title: "Lesson 2: Contextualizing the Era",
+        manual: {
+          title: "Read Historical Accounts",
+          desc: "Read and analyze excerpts of Southern black codes. Builds context connections.",
+          deltas: { time: -2, schema: 20, challenge: 15, polish: 5 },
+          node: "context",
+          essay: `<p class="essay-p struggle"><span class="badge">Student Authored</span>Analyzing the black codes of 1865 reveals how Southern legislatures attempted to <span class="strike">make slavery again</span> <span class="insert">re-impose labor control</span>, severely restricting civil mobility and economic independence.</p>`
+        },
+        ai: {
+          title: "AI Summarizer",
+          desc: "Feed historical codes into an AI summarizer. Get structured bullet points instantly.",
+          deltas: { time: 0, schema: 0, challenge: -8, polish: 20 },
+          essay: `<p class="essay-p ai-polish"><span class="badge" style="background:#d97706">AI Generated</span>State legislations enacted specific black codes defining civil conditions: 1. Compulsory annual labor contracts; 2. Strict vagrancy fines; 3. Prohibitions against independent agricultural ventures, legally stabilizing regional labor forces.</p>`
+        }
+      },
+      3: {
+        title: "Lesson 3: Corroboration & Verification",
+        manual: {
+          title: "Multi-Perspective Analysis",
+          desc: "Compare Congressional debates vs. local accounts. Triggers active cognitive linking.",
+          deltas: { time: -2, schema: 20, challenge: 15, polish: 5 },
+          node: "corroboration",
+          essay: `<p class="essay-p struggle"><span class="badge">Student Authored</span>By comparing Congressional transcripts with letters from local citizens, the <span class="strike">fight becomes clear</span> <span class="insert">ideological schism</span> between Radical Republicans and Andrew Johnson's executive policies becomes apparent.</p>`
+        },
+        ai: {
+          title: "AI Essay Co-Writer",
+          desc: "Delegate structural drafting to the AI essay builder. Generates a perfect transitional paragraph.",
+          deltas: { time: 0, schema: 0, challenge: -8, polish: 20 },
+          essay: `<p class="essay-p ai-polish"><span class="badge" style="background:#d97706">AI Generated</span>The Congressional debates of the 40th Congress illustrate the divergence in policy between executive reconstruction and legislative directives, reflecting systemic tensions surrounding state sovereignty and Federal intervention.</p>`
+        }
+      },
+      4: {
+        title: "Lesson 4: Argumentation & Evidence",
+        manual: {
+          title: "Socratic Argument Drafting",
+          desc: "Alex structures arguments connecting economic, social, and political indicators.",
+          deltas: { time: -2, schema: 20, challenge: 15, polish: 5 },
+          node: "argumentation",
+          essay: `<p class="essay-p struggle"><span class="badge">Student Authored</span>The ultimate failure of Reconstruction lay not in its goals, but in the <span class="strike">lack of police</span> <span class="insert">withdrawal of federal enforcement</span> and the rise of white supremacist paramilitaries, which dismantled black political power.</p>`
+        },
+        ai: {
+          title: "AI Argument Generator",
+          desc: "Input argument claims and let AI output three paragraphs of corroborative essay text.",
+          deltas: { time: 0, schema: 0, challenge: -8, polish: 20 },
+          essay: `<p class="essay-p ai-polish"><span class="badge" style="background:#d97706">AI Generated</span>Socio-political structures in the post-war South collapsed due to institutional enforcement deficiencies, the early withdrawal of the Union Army, and local paramilitary insurgencies, which collectively compromised voting rights and civil protections.</p>`
+        }
+      },
+      5: {
+        title: "Lesson 5: Revision & Synthesis",
+        manual: {
+          title: "Structural Peer Review",
+          desc: "Write synthesis conclusions showing structural lessons for modern democracy.",
+          deltas: { time: -2, schema: 20, challenge: 15, polish: 5 },
+          node: "synthesis",
+          essay: `<p class="essay-p struggle"><span class="badge">Student Authored</span>Ultimately, Reconstruction is an <span class="strike">unfinished war</span> <span class="insert">unfinished chapter</span> in American democracy, teaching us that civil rights are fragile without structural, long-term federal guarantees.</p>`
+        },
+        ai: {
+          title: "AI Prose Polisher",
+          desc: "Paste text into AI to automatically correct grammar, flow, and vocabulary.",
+          deltas: { time: 0, schema: 0, challenge: -10, polish: 25 },
+          essay: `<p class="essay-p ai-polish"><span class="badge" style="background:#d97706">AI Generated</span>In conclusion, the Reconstruction era stands as a testament to the structural complexities of federal civil rights enforcement, serving as a critical historical precedent highlighting the fragility of constitutional guarantees.</p>`
+        }
+      }
+    };
+
+    // DOM Elements
+    const timeVal = document.getElementById("timeVal");
+    const schemaVal = document.getElementById("schemaVal");
+    const challengeVal = document.getElementById("challengeVal");
+    const polishVal = document.getElementById("polishVal");
+    const lessonNumber = document.getElementById("lessonNumber");
+    const essayBody = document.getElementById("essayBody");
+    const essayClipboard = document.getElementById("essayClipboard");
+    
+    const btnManual = document.getElementById("btnManual");
+    const btnAI = document.getElementById("btnAI");
+    
+    const dialogOverlay = document.getElementById("dialogOverlay");
+    const dialogAvatar = document.getElementById("dialogAvatar");
+    const dialogTitle = document.getElementById("dialogTitle");
+    const dialogBody = document.getElementById("dialogBody");
+    const dialogBtn = document.getElementById("dialogBtn");
+
+    // Initialize Game
+    function init() {
+      state.lesson = 1;
+      state.timeLeft = 8;
+      state.schemaDensity = 0;
+      state.challenge = 30;
+      state.polish = 0;
+      state.activeNodes.clear();
+      state.choices = [];
+      state.adminWalkthroughDone = false;
+      
+      updateHUD();
+      renderSchemaNodes();
+      updateChoicesPanel();
+      
+      essayBody.innerHTML = `<p style="color: #6b7280; font-style: italic; text-align: center; margin-top: 50px;">
+        The page is blank. Select unit choices on the left to begin scaffolding Alex's historical inquiry.
+      </p>`;
+      
+      btnManual.addEventListener("click", () => handleChoice("manual"));
+      btnAI.addEventListener("click", () => handleChoice("ai"));
+    }
+
+    function updateHUD() {
+      timeVal.textContent = `${state.timeLeft} TU`;
+      schemaVal.textContent = `${state.schemaDensity}%`;
+      challengeVal.textContent = `${state.challenge}%`;
+      polishVal.textContent = `${state.polish}%`;
+      
+      if (state.lesson <= 5) {
+        lessonNumber.textContent = `Lesson ${state.lesson} of 5`;
+      } else {
+        lessonNumber.textContent = `Transfer Test Evaluation`;
+      }
+
+      // Time warning
+      const timePill = document.getElementById("timePill");
+      if (state.timeLeft <= 2) {
+        timePill.style.borderColor = "var(--red)";
+      } else {
+        timePill.style.borderColor = "var(--border)";
+      }
+    }
+
+    function updateChoicesPanel() {
+      if (state.lesson > 5) {
+        // Swap choices for Transfer Button
+        document.getElementById("choicesPanel").innerHTML = `
+          <button class="btn" style="grid-column: span 2; padding: 16px; font-size: 1.1rem;" onclick="triggerTransferTest()">
+            Begin Transfer Test &rarr;
+          </button>
+        `;
+        return;
+      }
+
+      const current = lessonsConfig[state.lesson];
+      btnManual.innerHTML = `
+        <strong>
+          <span>👨‍💻 ${current.manual.title}</span>
+          <span class="cost-badge">-2 Time Units</span>
+        </strong>
+        <span>${current.manual.desc}</span>
+      `;
+      btnAI.innerHTML = `
+        <strong>
+          <span>🤖 ${current.ai.title}</span>
+          <span class="cost-badge">0 Time Units</span>
+        </strong>
+        <span>${current.ai.desc}</span>
+      `;
+
+      // Disable manual option if time is insufficient
+      if (state.timeLeft < 2) {
+        btnManual.disabled = true;
+        btnManual.querySelector(".cost-badge").textContent = "Time Expired";
+      } else {
+        btnManual.disabled = false;
+      }
+    }
+
+    function handleChoice(type) {
+      const current = lessonsConfig[state.lesson];
+      const selected = current[type];
+      
+      state.choices.push(type);
+
+      // Apply deltas
+      state.timeLeft += selected.deltas.time;
+      state.schemaDensity += selected.deltas.schema;
+      state.challenge += selected.deltas.challenge;
+      state.polish += selected.deltas.polish;
+
+      // Clamp challenge and polish
+      state.challenge = Math.max(10, Math.min(100, state.challenge));
+      state.polish = Math.max(0, Math.min(100, state.polish));
+
+      // Append essay text
+      if (state.lesson === 1) {
+        essayBody.innerHTML = ""; // Clear initial prompt
+      }
+      essayBody.innerHTML += selected.essay;
+
+      // Scroll clipboard body to bottom
+      essayBody.scrollTop = essayBody.scrollHeight;
+
+      if (type === "manual") {
+        state.activeNodes.add(selected.node);
+        // Highlight clipboard clip as steel grey
+        essayClipboard.classList.remove("ai-boosted");
+      } else {
+        // Highlight clipboard with neon-gold outline
+        essayClipboard.classList.add("ai-boosted");
+      }
+
+      // Check admin walkthrough at Lesson 3 completion
+      if (state.lesson === 3) {
+        triggerAdminWalkthrough();
+      } else {
+        advanceLesson();
+      }
+    }
+
+    function advanceLesson() {
+      state.lesson++;
+      updateHUD();
+      renderSchemaNodes();
+      updateChoicesPanel();
+    }
+
+    function renderSchemaNodes() {
+      // Connectors
+      const paths = [
+        { id: "path-sourcing-corrob", n1: "sourcing", n2: "corroboration" },
+        { id: "path-context-corrob", n1: "context", n2: "corroboration" },
+        { id: "path-corrob-arg", n1: "corroboration", n2: "argumentation" },
+        { id: "path-corrob-synth", n1: "corroboration", n2: "synthesis" },
+        { id: "path-arg-transfer", n1: "argumentation", n2: "transfer" },
+        { id: "path-synth-transfer", n1: "synthesis", n2: "transfer" }
+      ];
+
+      paths.forEach(p => {
+        const el = document.getElementById(p.id);
+        if (state.activeNodes.has(p.n1) && state.activeNodes.has(p.n2)) {
+          el.classList.add("active");
+        } else {
+          el.classList.remove("active");
+        }
+      });
+
+      // Nodes
+      document.querySelectorAll(".schema-node").forEach(node => {
+        const type = node.dataset.node;
+        if (state.activeNodes.has(type)) {
+          node.classList.add("active");
+        } else {
+          node.classList.remove("active");
+        }
+      });
+    }
+
+    // Modal dialog trigger
+    function showDialog(avatar, title, body, btnText, callback) {
+      dialogAvatar.textContent = avatar;
+      dialogTitle.textContent = title;
+      dialogBody.innerHTML = body;
+      dialogBtn.textContent = btnText;
+      
+      dialogOverlay.classList.add("active");
+      
+      // Remove old listeners
+      const newBtn = dialogBtn.cloneNode(true);
+      dialogBtn.parentNode.replaceChild(newBtn, dialogBtn);
+      
+      newBtn.focus();
+      newBtn.addEventListener("click", () => {
+        dialogOverlay.classList.remove("active");
+        if (callback) callback();
+      });
+    }
+
+    // Lesson 3 Walkthrough Trigger
+    function triggerAdminWalkthrough() {
+      // Analyze choices so far (for first 3 lessons)
+      const aiCount = state.choices.filter(c => c === "ai").length;
+      
+      let bodyText = "";
+      let avatar = "👨‍💼";
+      let adminName = "Principal Henderson (Walkthrough)";
+
+      if (aiCount === 3) {
+        // High polish, zero schema
+        bodyText = `
+          <p>The Principal enters the classroom during Lesson 3 and glances at Alex's screen, which displays a flawless, AI-written transitional introduction.</p>
+          <p class="quote">"Exceptional scaffolding, teacher! Look at the vocabulary and structure in Alex's draft. 'Ideological schisms' and 'systemic tensions'—it's college-ready historical prose! Outstanding, keep this up."</p>
+          <p><strong>Friction Analysis:</strong> You received unearned administrative praise. Henderson is celebrating the polished <i>product</i> of learning, completely unaware that Alex's cognitive Schema Net is empty. This is the compliance-driven <strong>Unproductive Success</strong> trap.</p>
+        `;
+      } else if (aiCount === 0) {
+        // Low polish, high schema
+        bodyText = `
+          <p>The Principal stops by Alex's desk, looking at the draft littered with manual strike-throughs and handwritten corrections.</p>
+          <p class="quote">"Pacing looks a bit slow and untidy here. Alex seems to be struggling to produce smooth paragraphs, and you've spent 6 time units already. Are we sure we shouldn't speed up this drafting phase with templates?"</p>
+          <p><strong>Friction Analysis:</strong> The Principal observes productive struggle but misinterprets it as poor instruction. Pushing through this institutional resistance is necessary to build real historical thinking capacity.</p>
+        `;
+      } else {
+        // Balanced
+        bodyText = `
+          <p>The Principal visits your classroom and audits the lesson board.</p>
+          <p class="quote">"Alex is making progress, but the essay looks like a mix of very clean paragraphs and very messy scratch notes. Let's make sure we tidy up the writing before the final evaluation."</p>
+          <p><strong>Friction Analysis:</strong> The administrator rewards the polished blocks and questions the messy, active drafting slots, showing how public evaluations bias toward product over process.</p>
+        `;
+      }
+
+      showDialog(avatar, adminName, bodyText, "Continue Unit Planning", advanceLesson);
+    }
+
+    // Lesson 6: The Transfer Test
+    function triggerTransferTest() {
+      // Activate the Transfer node for the test
+      state.activeNodes.add("transfer");
+      renderSchemaNodes();
+      updateHUD();
+
+      // Show Douglass prompt
+      const douglassQuote = `
+        <p class="quote">"If there is no struggle, there is no progress. Those who profess to favor freedom, and yet deprecate agitation, are men who want crops without plowing up the ground." &mdash; Frederick Douglass, 1857</p>
+        <p><strong>Transfer Challenge:</strong> Apply your understanding of structural forces during Reconstruction to analyze Douglass's warning. Does this support or oppose the view that Reconstruction's failure was inevitable?</p>
+      `;
+
+      showDialog("📜", "Transfer Test: Frederick Douglass", douglassQuote, "Begin Evaluation", runTransferEvaluation);
+    }
+
+    function runTransferEvaluation() {
+      const clipboard = document.getElementById("essayClipboard");
+      
+      if (state.schemaDensity < 55) {
+        // SHEAR FAILURE (Collapses under weight)
+        clipboard.classList.add("sheared");
+        
+        setTimeout(() => {
+          showDialog("💥", "Evaluation: Structural Shear", `
+            <p><strong>Fidelity Shear Collapse!</strong></p>
+            <p>Alex's essay fell apart. When faced with the Douglass transfer prompt, the student had no active cognitive schema connecting sourcing, context, and arguments.</p>
+            <p>The highly polished prose was hollow, copied from generative templates. Under the load of a novel application prompt, Alex could not reconcile the claims. The essay structurally sheared under the weight of the test.</p>
+          `, "See Unit Report", () => showDebriefScreen(false));
+        }, 1300);
+      } else if (state.schemaDensity < 70) {
+        // PASSABLE BUT WEAK
+        essayBody.innerHTML += `
+          <p class="essay-p struggle" style="border-color: var(--gold);"><span class="badge">Student Authored</span>Douglas argues that progress requires struggle. Reconstruction was a massive struggle between blacks who wanted freedom and whites who wanted labor control. The withdrawal of federal protection meant the struggle collapsed. Alex struggled to formulate this connection fully, but completed the analysis.</p>
+        `;
+        essayBody.scrollTop = essayBody.scrollHeight;
+        
+        setTimeout(() => {
+          showDialog("📝", "Evaluation: Fragile Transfer", `
+            <p><strong>Fragile Calibration.</strong></p>
+            <p>Alex attempted the transfer test. Because you spent some time on manual scaffolding, they recalled some context to build an original paragraph.</p>
+            <p>However, because some links in the Schema Net were bypassed, the transfer lacks depth and cross-connections. The result is passable, but fragile.</p>
+          `, "See Unit Report", () => showDebriefScreen(true));
+        }, 1500);
+      } else {
+        // EXCELLENT TRANSFER (All links active)
+        essayBody.innerHTML += `
+          <p class="essay-p struggle"><span class="badge">Student Authored</span>Douglass's concept of 'struggle' is key to understanding Reconstruction's failure. The 'plowing' represents the structural reforms—such as land redistribution and active voting protection—which were abandoned by the federal government in 1877. Purity of constitutional ideals was not enough; without the 'agitation' of enforcement, systemic rollbacks were inevitable.</p>
+        `;
+        essayBody.scrollTop = essayBody.scrollHeight;
+        
+        setTimeout(() => {
+          showDialog("🏆", "Evaluation: Calibrated Success!", `
+            <p><strong>Calibrated Inquiry Success!</strong></p>
+            <p>Outstanding facilitation! Because you protected the cognitive friction across all stages, Alex developed a robust Schema Net.</p>
+            <p>When presented with the Frederick Douglass quote, Alex immediately mapped sourcing and context to synthesize an original, structurally sound thesis. The learning has successfully transferred.</p>
+          `, "See Unit Report", () => showDebriefScreen(true));
+        }, 1500);
+      }
+    }
+
+    // Show Debrief Screen
+    function showDebriefScreen(passed) {
+      document.getElementById("gameMain").style.display = "none";
+      document.getElementById("debriefMain").style.display = "flex";
+      
+      const debriefTitle = document.getElementById("debriefTitle");
+      const debriefSummary = document.getElementById("debriefSummary");
+      const finalChallenge = document.getElementById("finalChallenge");
+      const finalPolish = document.getElementById("finalPolish");
+      const finalSchema = document.getElementById("finalSchema");
+      const finalTransferText = document.getElementById("finalTransferText");
+      const debriefScore = document.getElementById("debriefScore");
+      
+      finalChallenge.textContent = state.challenge;
+      finalPolish.textContent = state.polish;
+      finalSchema.textContent = state.schemaDensity;
+      
+      debriefScore.textContent = `Schema Density: ${state.schemaDensity}%`;
+
+      if (state.schemaDensity < 55) {
+        debriefTitle.textContent = "Unproductive Success (Hollow Polish)";
+        debriefSummary.innerHTML = `
+          You prioritized immediate product appearance by automating tasks with generative AI templates. 
+          While Alex's essay draft initially looked highly professional and won the praise of the administrator, 
+          the complete lack of cognitive friction meant the student developed zero memory pathways. 
+          The learning was hollow, collapsing completely when tested on original conceptual transfer.
+        `;
+        finalTransferText.innerHTML = `
+          <strong>Result: Sheared Transfer</strong><br>
+          The student score failed the threshold for calibrated learning. This illustrates the risk of <strong>exclusionary friction bypass</strong>: by removing all cognitive struggle, we eliminate the learning itself.
+        `;
+        document.getElementById("debriefStatusTitle").textContent = "Unit Report: Failure of Transfer";
+      } else if (state.schemaDensity < 70) {
+        debriefTitle.textContent = "Fragile Inquiry (Calibrated Struggle)";
+        debriefSummary.innerHTML = `
+          You balanced the time constraints by mixing manual research and generative summaries. 
+          Alex developed a basic understanding of Reconstruction but lacked deep, cross-connecting concepts. 
+          They completed the transfer test, but the analysis was superficial.
+        `;
+        finalTransferText.innerHTML = `
+          <strong>Result: Moderate Transfer</strong><br>
+          The student successfully managed the prompt but did not showcase deep relational mapping. To improve, allocate more time to the historical contextualization and argumentation phases.
+        `;
+        document.getElementById("debriefStatusTitle").textContent = "Unit Report: Emerging Inquiry";
+      } else {
+        debriefTitle.textContent = "Calibrated Inquiry Certificate";
+        debriefSummary.innerHTML = `
+          <strong>Exceptional scaffolding design!</strong> By deliberately allocating your time budget to manual, high-friction tasks, 
+          you successfully calibrated the challenge inside the productive zone (Friction: ${state.challenge}%). 
+          Alex's cognitive net was fully connected. They did not just produce an essay—they gained structural historical reasoning that successfully transferred to new contexts.
+        `;
+        finalTransferText.innerHTML = `
+          <strong>Result: Successful Transfer</strong><br>
+          Alex successfully analyzed the Douglass quote, linking systemic structures to political realities. You proved that protecting pedagogical friction is the key to deep, durable education.
+        `;
+        document.getElementById("debriefStatusTitle").textContent = "Unit Report: Calibrated Success";
+      }
+    }
+
+    function printReport() {
+      const printWindow = window.open("", "_blank");
+      const passed = state.schemaDensity >= 55;
+      
+      printWindow.document.write(`
+        <html>
+        <head>
+          <title>The Schema Constructor - Unit Calibration Report</title>
+          <style>
+            body { font-family: Georgia, serif; line-height: 1.6; padding: 40px; color: #111; max-width: 800px; margin: auto; }
+            h1 { border-bottom: 2px solid #111; padding-bottom: 10px; }
+            .meta { background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #ddd; }
+            .content { margin-top: 30px; }
+            .footer { margin-top: 50px; font-size: 0.8rem; color: #777; text-align: center; border-top: 1px solid #ccc; padding-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <h1>The Schema Constructor: Calibration Certificate</h1>
+          <p><strong>Scaffolder:</strong> Micah Miner / Technology Leadership Practitioner</p>
+          
+          <div class="meta">
+            <strong>Unit Topic:</strong> Reconstruction Era: Success vs. Failure<br>
+            <strong>Cognitive Schema Density:</strong> ${state.schemaDensity}%<br>
+            <strong>Productive Challenge (Friction):</strong> ${state.challenge}%<br>
+            <strong>Superficial Hollow Polish:</strong> ${state.polish}%<br>
+            <strong>Transfer Evaluation:</strong> ${passed ? "PASSED (Transfer Completed)" : "FAILED (Structural Shear)"}
+          </div>
+          
+          <h2>Unit Design Assessment</h2>
+          <p>${document.getElementById("debriefSummary").innerHTML}</p>
+          
+          <div class="footer">
+            Generated on ${new Date().toLocaleDateString()} &middot; Pedagogical Friction Research Framework &middot; *Note: All scores and calibrations are illustrative models.
+          </div>
+          
+          <script>
+            window.onload = function() { window.print(); }
+          <\/script>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+
+    // Start Game
+    init();
+  </script>
+</body>
+</html>
