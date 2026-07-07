@@ -11,3 +11,9 @@
   - `BARRIER_ACCESSIBLE_MAX = 20`
 - **Required Footnote**:
   - `*Note: All scores, stats, and achievements are illustrative models of the pedagogical friction framework, not validated learning assessment instruments.`
+
+## 2026-07-07: Remote Deployment & Verification
+- **GitHub Repository**: Created public repository `minerclass/schema-constructor`.
+- **Default Branch**: Branch `master` renamed to `main`, set as default branch on remote, and remote `master` deleted.
+- **GitHub Pages**: Enabled via REST API. Live URL: `https://minerclass.github.io/schema-constructor/`
+- **Verification Status**: Verified zero external CDNs or Google Fonts. Responsive layout checked across mobile and desktop viewport profiles. Tested transfer test thresholds (`schemaDensity >= 55` required). Passed local verification.
