@@ -282,6 +282,18 @@
       100% { transform: rotate(-8deg) translateY(120px) skewX(-6deg); opacity: 0.15; filter: blur(2px); }
     }
 
+    @keyframes preShearShake {
+      0%, 100% { transform: translate(0, 0) rotate(0); }
+      20% { transform: translate(-7px, 2px) rotate(-0.7deg); }
+      40% { transform: translate(6px, -2px) rotate(0.6deg); }
+      60% { transform: translate(-5px, 1px) rotate(-0.5deg); }
+      80% { transform: translate(4px, -1px) rotate(0.4deg); }
+    }
+
+    .clipboard.shaking {
+      animation: preShearShake 0.45s ease-in-out 2;
+    }
+
     .essay-title {
       font-size: 1.2rem;
       font-weight: bold;
@@ -795,6 +807,7 @@
         </div>
 
         <div style="border-top: 1px solid var(--border); margin-top: 25px; padding-top: 20px; display: flex; gap: 15px;">
+          <p style="font-size: 0.78rem; font-style: italic; opacity: 0.75; margin: 0;">*Note: All scores, stats, and achievements are illustrative models of the pedagogical friction framework, not validated learning assessment instruments.</p>
           <button class="btn" onclick="location.reload()">Reconstruct Schema</button>
           <button class="btn ghost" onclick="printReport()">Print Calibration Summary</button>
         </div>
@@ -1107,14 +1120,20 @@
       dialogAvatar.textContent = avatar;
       dialogTitle.textContent = title;
       dialogBody.innerHTML = body;
-      dialogBtn.textContent = btnText;
-      
+
+      // Resolve the button fresh on every call. It gets replaced by a clone
+      // below, so a captured reference would point at an orphaned node on the
+      // next call — which silently broke every dialog after the first (the
+      // replaceChild threw, the new callback never attached, and the visible
+      // button kept the previous dialog's listener).
+      const currentBtn = document.getElementById("dialogBtn");
+      currentBtn.textContent = btnText;
+
       dialogOverlay.classList.add("active");
-      
-      // Remove old listeners
-      const newBtn = dialogBtn.cloneNode(true);
-      dialogBtn.parentNode.replaceChild(newBtn, dialogBtn);
-      
+
+      const newBtn = currentBtn.cloneNode(true);
+      currentBtn.parentNode.replaceChild(newBtn, currentBtn);
+
       newBtn.focus();
       newBtn.addEventListener("click", () => {
         dialogOverlay.classList.remove("active");
@@ -1177,16 +1196,24 @@
       const clipboard = document.getElementById("essayClipboard");
       
       if (state.schemaDensity < 55) {
-        // SHEAR FAILURE (Collapses under weight)
-        clipboard.classList.add("sheared");
-        
+        // SHEAR FAILURE — sequence it so the player actually sees it:
+        // bring the clipboard into view, shake, shear, THEN explain.
+        clipboard.scrollIntoView({ behavior: "smooth", block: "center" });
+        clipboard.classList.add("shaking");
+
+        setTimeout(() => {
+          clipboard.classList.remove("shaking");
+          clipboard.classList.add("sheared");
+        }, 950);
+
         setTimeout(() => {
           showDialog("💥", "Evaluation: Structural Shear", `
             <p><strong>Fidelity Shear Collapse!</strong></p>
-            <p>Alex's essay fell apart. When faced with the Douglass transfer prompt, the student had no active cognitive schema connecting sourcing, context, and arguments.</p>
+            <p><em>Transfer failed: Alex's polished essay cannot support new analysis because the Schema Net remains underdeveloped.</em></p>
+            <p>When faced with the Douglass transfer prompt, the student had no active cognitive schema connecting sourcing, context, and arguments.</p>
             <p>The highly polished prose was hollow, copied from generative templates. Under the load of a novel application prompt, Alex could not reconcile the claims. The essay structurally sheared under the weight of the test.</p>
           `, "See Unit Report", () => showDebriefScreen(false));
-        }, 1300);
+        }, 2700);
       } else if (state.schemaDensity < 70) {
         // PASSABLE BUT WEAK
         essayBody.innerHTML += `
@@ -1309,7 +1336,7 @@
           <p>${document.getElementById("debriefSummary").innerHTML}</p>
           
           <div class="footer">
-            Generated on ${new Date().toLocaleDateString()} &middot; Pedagogical Friction Research Framework &middot; *Note: All scores and calibrations are illustrative models.
+            Generated on ${new Date().toLocaleDateString()} &middot; Pedagogical Friction Research Framework &middot; *Note: All scores, stats, and achievements are illustrative models of the pedagogical friction framework, not validated learning assessment instruments.
           </div>
           
           <script>
