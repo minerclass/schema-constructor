@@ -18,3 +18,9 @@
 - **GitHub Pages**: Enabled via REST API. Live URL: `https://minerclass.github.io/schema-constructor/`
 - **Verification Status**: Verified zero external CDNs or Google Fonts. Responsive layout checked across mobile and desktop viewport profiles. Tested transfer test thresholds (`schemaDensity >= 55` required). Passed local verification.
 ── QA fixes (2026-07-08): see commit log for the Phase 2 QA-pass fixes; full defect analysis in the session review.
+
+## 2026-07-08: Phase 3 Upgrades
+- Added prediction beat before the transfer test runs, asking players if Alex's essay will hold or shear under the Douglass prompt.
+- Added key listeners (Keys 1 & 2) for selecting the prediction, and integrated judgment calibration feedback on the final debrief screen.
+- Implemented mobile media queries for viewport widths under 480px (scaling down the SVG, main container gap/padding, and dialog widths).
+- Verified playthrough and replay with zero console errors.

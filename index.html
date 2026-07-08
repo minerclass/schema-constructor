@@ -640,6 +640,29 @@
       }
     }
 
+    /* Mobile Responsive Pass at 390px */
+    @media (max-width: 480px) {
+      .canvas-container {
+        min-height: 280px;
+      }
+      .schema-svg {
+        max-height: 300px;
+      }
+      main {
+        padding: 8px;
+        gap: 12px;
+        grid-template-columns: 1fr;
+      }
+      .card {
+        padding: 12px;
+      }
+      .dialog-card {
+        width: 95%;
+        margin: 10px;
+        padding: 16px;
+      }
+    }
+
     .debrief-card {
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--border);
@@ -799,6 +822,7 @@
             <p><strong>Friction Challenge:</strong> <span id="finalChallenge"></span>% (Calibrated range: 55-80%)</p>
             <p><strong>Hollow Polish:</strong> <span id="finalPolish"></span>% (Measures superficial product appearance)</p>
             <p><strong>Cognitive Schema Density:</strong> <span id="finalSchema"></span>%</p>
+            <p id="calibLine" style="margin-top: 10px; font-weight: bold; color: var(--gold);"></p>
           </div>
           <div class="debrief-card">
             <h4>Transfer Evaluation Details</h4>
@@ -850,7 +874,8 @@
       polish: 0,
       activeNodes: new Set(),
       choices: [], // Records 'manual' or 'ai' for each lesson
-      adminWalkthroughDone: false
+      adminWalkthroughDone: false,
+      prediction: null
     };
 
     // Lesson configurations
@@ -1121,24 +1146,68 @@
       dialogTitle.textContent = title;
       dialogBody.innerHTML = body;
 
-      // Resolve the button fresh on every call. It gets replaced by a clone
-      // below, so a captured reference would point at an orphaned node on the
-      // next call — which silently broke every dialog after the first (the
-      // replaceChild threw, the new callback never attached, and the visible
-      // button kept the previous dialog's listener).
-      const currentBtn = document.getElementById("dialogBtn");
-      currentBtn.textContent = btnText;
+      const footer = document.querySelector(".dialog-footer");
+      footer.innerHTML = ""; // clear previous buttons
 
       dialogOverlay.classList.add("active");
 
-      const newBtn = currentBtn.cloneNode(true);
-      currentBtn.parentNode.replaceChild(newBtn, currentBtn);
-
-      newBtn.focus();
-      newBtn.addEventListener("click", () => {
+      const btn = document.createElement("button");
+      btn.className = "btn";
+      btn.id = "dialogBtn";
+      btn.textContent = btnText;
+      btn.addEventListener("click", () => {
         dialogOverlay.classList.remove("active");
         if (callback) callback();
       });
+      footer.appendChild(btn);
+      btn.focus();
+    }
+
+    function showPredictDialog(avatar, title, body, holdsCallback, shearsCallback) {
+      dialogAvatar.textContent = avatar;
+      dialogTitle.textContent = title;
+      dialogBody.innerHTML = body;
+
+      const footer = document.querySelector(".dialog-footer");
+      footer.innerHTML = ""; // clear
+
+      dialogOverlay.classList.add("active");
+
+      const btnHolds = document.createElement("button");
+      btnHolds.className = "btn";
+      btnHolds.textContent = "Predict Holds (Key 1)";
+      btnHolds.style.marginRight = "10px";
+      btnHolds.addEventListener("click", () => {
+        dialogOverlay.classList.remove("active");
+        document.removeEventListener("keydown", tempKeyHandler);
+        holdsCallback();
+      });
+
+      const btnShears = document.createElement("button");
+      btnShears.className = "btn ghost";
+      btnShears.textContent = "Predict Shears (Key 2)";
+      btnShears.addEventListener("click", () => {
+        dialogOverlay.classList.remove("active");
+        document.removeEventListener("keydown", tempKeyHandler);
+        shearsCallback();
+      });
+
+      footer.appendChild(btnHolds);
+      footer.appendChild(btnShears);
+      btnHolds.focus();
+
+      function tempKeyHandler(e) {
+        if (e.key === "1") {
+          dialogOverlay.classList.remove("active");
+          document.removeEventListener("keydown", tempKeyHandler);
+          holdsCallback();
+        } else if (e.key === "2") {
+          dialogOverlay.classList.remove("active");
+          document.removeEventListener("keydown", tempKeyHandler);
+          shearsCallback();
+        }
+      }
+      document.addEventListener("keydown", tempKeyHandler);
     }
 
     // Lesson 3 Walkthrough Trigger
@@ -1189,7 +1258,22 @@
         <p><strong>Transfer Challenge:</strong> Apply your understanding of structural forces during Reconstruction to analyze Douglass's warning. Does this support or oppose the view that Reconstruction's failure was inevitable?</p>
       `;
 
-      showDialog("📜", "Transfer Test: Frederick Douglass", douglassQuote, "Begin Evaluation", runTransferEvaluation);
+      showDialog("📜", "Transfer Test: Frederick Douglass", douglassQuote, "Proceed to Prediction", () => {
+        const predictPrompt = `
+          <p>Analyze Alex's schema network calibration. Will Alex's essay hold under the weight of the Douglass transfer prompt, or will it shear due to cognitive bypass?</p>
+          <div style="margin-top: 15px; font-weight: bold; color: var(--gold); text-align: center;">
+            [Key 1] Predict Holds (Alex has built a strong schema net)<br>
+            [Key 2] Predict Shears (Alex's essay is hollow and will collapse)
+          </div>
+        `;
+        showPredictDialog("🔮", "Predict Transfer Outcome", predictPrompt, () => {
+          state.prediction = true; // Holds
+          runTransferEvaluation();
+        }, () => {
+          state.prediction = false; // Shears
+          runTransferEvaluation();
+        });
+      });
     }
 
     function runTransferEvaluation() {
@@ -1263,6 +1347,22 @@
       finalSchema.textContent = state.schemaDensity;
       
       debriefScore.textContent = `Schema Density: ${state.schemaDensity}%`;
+
+      const calEl = document.getElementById("calibLine");
+      if (state.prediction !== undefined && state.prediction !== null) {
+        const hit = state.prediction === (state.schemaDensity >= 55);
+        const predText = state.prediction ? "HOLDS" : "SHEARS";
+        const actualText = (state.schemaDensity >= 55) ? "HOLDS" : "SHEARS";
+        if (hit) {
+          calEl.innerHTML = `<strong>Judgment Calibration:</strong> You predicted <strong>${predText}</strong> and the essay <strong>${actualText}</strong>. Your read of the student's schema network matched reality. That prediction skill is the calibration the framework asks of teachers.`;
+          calEl.style.color = "var(--teal)";
+        } else {
+          calEl.innerHTML = `<strong>Judgment Calibration:</strong> You predicted <strong>${predText}</strong> but the essay actually <strong>${actualText}</strong>. Misreading the structural strength of a student's schema network can lead to over-scaffolding or unexpected failures.`;
+          calEl.style.color = "#fb7185"; // rose/soft red
+        }
+      } else {
+        calEl.innerHTML = "";
+      }
 
       if (state.schemaDensity < 55) {
         debriefTitle.textContent = "Unproductive Success (Hollow Polish)";
