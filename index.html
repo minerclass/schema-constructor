@@ -4,12 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Schema Constructor: Reconstruction Era Unit</title>
+  <link rel="stylesheet" href="https://minerclass.github.io/tokens.css">
   <style>
     :root {
       --bg: #090d16;
       --panel: rgba(17, 25, 40, 0.75);
       --border: rgba(255, 255, 255, 0.08);
-      --text: #f3f4f6;
+      /* Ground gradient stays local; only the text joins the shared ink. */
+      --text: var(--mjm-ink, #f3f4f6);
+      --mjm-accent: var(--mjm-teal, #5eead4);
       --text-muted: #9ca3af;
       --teal: #5eead4;
       --gold: #f59e0b;
@@ -794,7 +797,7 @@
         <h2 class="essay-title">Alex's Essay: Reconstruction's Unfinished Business</h2>
         
         <div class="essay-body" id="essayBody">
-          <p style="color: #6b7280; font-style: italic; text-align: center; margin-top: 50px;">
+          <p style="color: #616974; font-style: italic; text-align: center; margin-top: 50px;">
             The page is blank. Select unit choices on the left to begin scaffolding Alex's historical inquiry.
           </p>
         </div>
@@ -997,7 +1000,7 @@
       renderSchemaNodes();
       updateChoicesPanel();
       
-      essayBody.innerHTML = `<p style="color: #6b7280; font-style: italic; text-align: center; margin-top: 50px;">
+      essayBody.innerHTML = `<p style="color: #616974; font-style: italic; text-align: center; margin-top: 50px;">
         The page is blank. Select unit choices on the left to begin scaffolding Alex's historical inquiry.
       </p>`;
       
